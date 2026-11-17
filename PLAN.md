@@ -33,7 +33,11 @@ Un objectif de la semaine est la même chose, à l'échelle des jours : « jeudi
   - bourdon grave continu, dont le filtre s'ouvre avec la tension ;
   - battement de cœur de 40 → 120 bpm à l'approche de la fin ;
   - tout est synthétisé (Web Audio), sans fichier son.
-- Fin : vibration courte (désactivable). Si le timer venait d'une tâche, on propose « Arrivé ✓ » ou « Repousser ↷ ».
+- **Sons d'alerte** (activés par défaut, indépendants du bouton Muet) :
+  - à **10 % restants** : le bol chantant, deux fois ;
+  - à la **fin** : « le coup final », un accord grave en battement de cœur étouffé et un peu irrégulier (~66 bpm), qui continue **jusqu'à ce qu'on touche l'écran** (arrêt de sécurité après 5 min).
+  - Page d'écoute de tous les sons : `sons.html`.
+- Vibration à 10 % et à la fin (désactivable), calée sur le battement. Si le timer venait d'une tâche, on propose « Arrivé ✓ » ou « Repousser ↷ ».
 - Le timer survit à un rechargement de l'appli.
 
 ## Écran Jour (V1)

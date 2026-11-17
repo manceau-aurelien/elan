@@ -35,6 +35,11 @@ export function unlock() {
   ensureCtx();
 }
 
+// Contexte audio partagé (utilisé aussi par les sons d'alerte)
+export function getCtx() {
+  return ensureCtx();
+}
+
 function startDrone() {
   const t = ctx.currentTime;
   const filter = ctx.createBiquadFilter();
@@ -139,24 +144,6 @@ export function stop() {
   playing = false;
   clearInterval(schedTimer);
   stopDrone();
-}
-
-// Note finale, profonde, quand le temps est écoulé
-export function finale() {
-  if (!ensureCtx()) return;
-  const t = ctx.currentTime + 0.05;
-  [55, 82.4, 110].forEach((f, i) => {
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = f;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.35 / (i + 1), t + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 4);
-    o.connect(g).connect(master);
-    o.start(t);
-    o.stop(t + 4.2);
-  });
 }
 
 export const isPlaying = () => playing;

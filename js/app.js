@@ -4,10 +4,23 @@ import { initSheet, openSheet, closeSheet } from './sheet.js';
 import * as timer from './timer.js';
 import * as day from './day.js';
 import * as week from './week.js';
+import * as sound from './sound.js';
+import { playWarning, startHeartbeat } from './chimes.js';
 import { toast, isoDate } from './util.js';
 
 const views = { hour: timer, day, week };
 let current = 'hour';
+
+// Test du son de fin depuis les réglages : un toucher n'importe où l'arrête
+let testStop = null;
+let testJustStopped = false;
+document.addEventListener('pointerdown', () => {
+  if (!testStop) return;
+  testStop();
+  testStop = null;
+  testJustStopped = true;
+  setTimeout(() => (testJustStopped = false), 400);
+}, true);
 
 const nav = {
   go(view, opts = {}) {
@@ -43,11 +56,19 @@ function openSettings() {
         </div>
       </div>
       <div class="set-row">
-        <span>Son du timer<small>bourdon grave + battement qui accélère</small></span>
+        <span>Ambiance du timer<small>bourdon grave + battement qui accélère</small></span>
         <button class="switch ${s.sound ? 'on' : ''}" data-toggle="sound" role="switch" aria-checked="${s.sound}"><i></i></button>
       </div>
       <div class="set-row">
-        <span>Vibration à la fin</span>
+        <span>Sons d'alerte<small>bol chantant ×2 à 10 %, battement de cœur à la fin jusqu'à ce que tu touches l'écran</small></span>
+        <button class="switch ${s.alerts ? 'on' : ''}" data-toggle="alerts" role="switch" aria-checked="${s.alerts}"><i></i></button>
+      </div>
+      <div class="set-btns test-btns">
+        <button id="s-test-warn">▶ Écouter 10 %</button>
+        <button id="s-test-end">▶ Écouter la fin</button>
+      </div>
+      <div class="set-row">
+        <span>Vibration<small>à 10 % et à la fin</small></span>
         <button class="switch ${s.vibrate ? 'on' : ''}" data-toggle="vibrate" role="switch" aria-checked="${s.vibrate}"><i></i></button>
       </div>
       <div class="set-row">
@@ -77,6 +98,12 @@ function openSettings() {
       b.classList.toggle('on', v);
       b.setAttribute('aria-checked', String(v));
     }));
+    el.querySelector('#s-test-warn').addEventListener('click', () => playWarning(sound.getCtx()));
+    el.querySelector('#s-test-end').addEventListener('click', () => {
+      if (testJustStopped) return;
+      testStop = startHeartbeat(sound.getCtx());
+      toast("Touche l'écran pour couper le son");
+    });
     el.querySelector('#s-export').addEventListener('click', () => {
       const blob = new Blob([store.exportData()], { type: 'application/json' });
       const a = document.createElement('a');

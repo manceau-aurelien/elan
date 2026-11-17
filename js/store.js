@@ -4,8 +4,9 @@ const KEY = 'elan:v1';
 const DEFAULTS = () => ({
   settings: {
     display: 'time',   // 'time' | 'percent'
-    sound: false,      // ambiance sonore du timer
-    vibrate: true,     // vibration à la fin du timer
+    sound: false,      // ambiance sonore du timer (bourdon + battement)
+    alerts: true,      // bol chantant à 10 % + battement de cœur à la fin
+    vibrate: true,     // vibration à 10 % et à la fin du timer
   },
   // Tâche = point d'arrivée : { id, title, due (ms), originalDue (ms), postponed, done, doneAt }
   tasks: [],

@@ -2,6 +2,7 @@
 import * as store from './store.js';
 import { createDisk } from './disk.js';
 import * as sound from './sound.js';
+import { playWarning, startHeartbeat } from './chimes.js';
 import { fmtClock, fmtMinutes, fmtTime, clamp, vibrate, toast, esc, MIN } from './util.js';
 
 const MAX_MIN = 180;
@@ -13,6 +14,7 @@ let fillAnim = null;   // petite animation de remplissage au démarrage
 let wakeLock = null;
 let wakePending = false;
 let visible = true;
+let stopAlarm = null;  // battement de fin en cours
 
 const T = () => store.get().timer;
 const S = () => store.get().settings;
@@ -94,7 +96,11 @@ export function initTimer(el, navCtx) {
   });
 
   // Si l'écran allumé a été refusé, on retente au prochain toucher
-  document.addEventListener('pointerdown', () => { if (!wakeLock) syncWakeLock(); });
+  // Toucher l'écran coupe le battement de fin
+  document.addEventListener('pointerdown', () => {
+    if (stopAlarm) silenceAlarm();
+    if (!wakeLock) syncWakeLock();
+  }, true);
 
   // Vérifie la fin même si on est sur un autre onglet de l'appli
   setInterval(checkEnd, 1000);
@@ -132,6 +138,7 @@ function act(a) {
         duration: setMinutes * MIN,
         endAt: Date.now() + setMinutes * MIN,
         remaining: 0,
+        warned: false,
         seed: 1 + Math.floor(Math.random() * 99999),
       };
     });
@@ -169,7 +176,17 @@ function act(a) {
 
 function checkEnd() {
   const t = T();
-  if (t.status === 'running' && t.endAt <= Date.now()) finish(false);
+  if (t.status !== 'running') return;
+  if (t.endAt <= Date.now()) return finish(false);
+  // Alerte quand il ne reste plus que 10 %
+  const rem = t.endAt - Date.now();
+  if (!t.warned && rem <= t.duration * 0.1) {
+    store.update((s) => (s.timer.warned = true));
+    if (rem > 3000) {
+      if (S().alerts) playWarning(sound.getCtx());
+      if (S().vibrate) vibrate([120, 200, 120]);
+    }
+  }
 }
 
 function finish(silent) {
@@ -177,11 +194,26 @@ function finish(silent) {
   store.update((s) => { s.timer.status = 'done'; s.timer.remaining = 0; });
   sound.stop();
   if (!silent && late < 5000) {
-    if (S().vibrate) vibrate([300, 150, 300, 150, 600]);
-    if (S().sound) sound.finale();
+    if (S().alerts) {
+      // Le coup final, en battement de cœur, jusqu'à ce qu'on touche l'écran
+      silenceAlarm();
+      stopAlarm = startHeartbeat(sound.getCtx(), {
+        onBeat: () => { if (S().vibrate) vibrate([70, 200, 50]); },
+      });
+    } else if (S().vibrate) {
+      vibrate([300, 150, 300, 150, 600]);
+    }
   }
   renderAll();
   syncWakeLock();
+}
+
+function silenceAlarm() {
+  if (!stopAlarm) return;
+  stopAlarm();
+  stopAlarm = null;
+  vibrate(0);
+  frame(true);
 }
 
 /** Lance le timer jusqu'à l'heure d'arrivée d'une tâche. */
@@ -270,7 +302,7 @@ function frame(force) {
     disk.set({ fraction: 1, wear: 1, seed: t.seed, rings: 0, knob: false });
     big.textContent = 'Terminé';
     small.textContent = t.taskId ? 'arrivé à destination ?' : 'le temps est écoulé';
-    hint.textContent = '';
+    hint.textContent = stopAlarm ? "Touche l'écran pour couper le son" : '';
     wrap.classList.remove('pulse');
     root.style.setProperty('--wear', 1);
     return;

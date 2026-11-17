@@ -1,6 +1,6 @@
 // Service worker d'Élan : met l'appli en cache pour qu'elle marche hors ligne.
 // Changer VERSION à chaque publication pour forcer la mise à jour.
-const VERSION = 'elan-v1';
+const VERSION = 'elan-v2';
 const FILES = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const FILES = [
   './js/util.js',
   './js/disk.js',
   './js/sound.js',
+  './js/chimes.js',
   './js/timer.js',
   './js/day.js',
   './js/week.js',

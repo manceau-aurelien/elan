@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Élan · choisir les sons</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { overflow: auto; user-select: auto; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 24px 18px 60px; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    h1 span { color: var(--accent); }
+    .intro { color: var(--muted); margin: 0 0 18px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin: 26px 0 10px; }
+    .list { display: flex; flex-direction: column; gap: 8px; }
+    .snd { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); text-align: left; width: 100%; }
+    .snd:active { transform: scale(.99); }
+    .snd .play { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 18px; font-weight: 800; }
+    .snd.playing .play { background: var(--text); }
+    .snd b { display: block; font-size: 16px; }
+    .snd small { color: var(--muted); font-size: 13px; }
+    .snd .tag { margin-left: auto; flex: none; font-weight: 800; color: var(--faint); font-size: 18px; }
+    .opts { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--surface2); border: 1px solid var(--line); }
+    .opts label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; }
+    .opts small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+    input[type=range] { width: 160px; accent-color: var(--accent); }
+    input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
+    .end-note { margin-top: 28px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1><span>É</span>lan · choisis tes sons</h1>
+    <p class="intro">Touche un son pour l'écouter. Ensuite, dis-moi une lettre (alerte à 10 %) et un chiffre (fin du timer), par exemple « C et 4 ».</p>
+
+    <div class="opts">
+      <label>Volume <input type="range" id="vol" min="0.2" max="1.4" step="0.05" value="0.9"></label>
+      <label><span>Écouter par-dessus l'ambiance<small>bourdon + battement, comme en fin de timer avec le son activé</small></span><input type="checkbox" id="amb"></label>
+    </div>
+
+    <h2>Ton choix</h2>
+    <div class="list">
+      <button class="snd" id="mine-warn">
+        <span class="play">▶</span>
+        <span><b>10 % : bol chantant ×2</b><small>Deux fois le bol, à 2,6 s d'écart.</small></span>
+        <span class="tag">C×2</span>
+      </button>
+      <button class="snd" id="mine-end">
+        <span class="play">▶</span>
+        <span><b>Fin : le coup final en battement de cœur</b><small>« Boum-boum » grave et étouffé, ~66 bpm, un peu irrégulier. Touche n'importe où pour l'arrêter.</small></span>
+        <span class="tag">6♥</span>
+      </button>
+    </div>
+
+    <h2>Quand il reste 10 %</h2>
+    <div class="list" id="warn"></div>
+
+    <h2>Quand le timer est fini</h2>
+    <div class="list" id="end"></div>
+
+    <p class="end-note">Tous les sons sont générés par l'appli (aucun fichier), avec un filtre qui retire les aigus agressifs.</p>
+  </div>
+
+  <script type="module">
+    import { WARN, END, playChime, playWarning, startHeartbeat } from './js/chimes.js';
+    import * as sound from './js/sound.js';
+
+    let ctx = null;
+    const getCtx = () => (ctx ||= new (window.AudioContext || window.webkitAudioContext)());
+    const vol = document.getElementById('vol');
+
+    function render(id, lib, kind, labels) {
+      document.getElementById(id).innerHTML = Object.entries(lib).map(([key, s], i) => `
+        <button class="snd" data-kind="${kind}" data-id="${key}">
+          <span class="play">▶</span>
+          <span><b>${s.name}</b><small>${s.desc}</small></span>
+          <span class="tag">${labels[i]}</span>
+        </button>`).join('');
+    }
+    render('warn', WARN, 'warn', ['A', 'B', 'C', 'D', 'E']);
+    render('end', END, 'end', ['1', '2', '3', '4', '5', '6']);
+
+    let stopBeat = null;
+    let justStopped = false;
+    document.addEventListener('pointerdown', () => {
+      if (!stopBeat) return;
+      stopBeat();
+      stopBeat = null;
+      justStopped = true; // ce toucher sert seulement à arrêter
+      setTimeout(() => (justStopped = false), 400);
+      document.getElementById('mine-end').classList.remove('playing');
+    }, true);
+
+    document.getElementById('mine-warn').addEventListener('click', () => { if (!justStopped) playWarning(getCtx(), Number(vol.value)); });
+    document.getElementById('mine-end').addEventListener('click', (e) => {
+      if (justStopped) return;
+      stopBeat = startHeartbeat(getCtx(), { volume: Number(vol.value) });
+      e.currentTarget.classList.add('playing');
+    });
+
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.snd[data-kind]');
+      if (!b) return;
+      playChime(getCtx(), b.dataset.kind, b.dataset.id, Number(vol.value));
+      b.classList.add('playing');
+      setTimeout(() => b.classList.remove('playing'), 900);
+    });
+
+    document.getElementById('amb').addEventListener('change', (e) => {
+      sound.unlock();
+      if (e.target.checked) sound.start(0.88, 90000);
+      else sound.stop();
+    });
+  </script>
+</body>
+</html>

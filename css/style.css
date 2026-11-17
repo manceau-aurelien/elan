@@ -340,6 +340,8 @@ main {
 .switch:disabled { opacity: .4; }
 .set-btns { display: flex; gap: 8px; }
 .set-btns button { flex: 1; padding: 11px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--line); font-weight: 700; }
+.test-btns { padding: 0 0 12px; border-bottom: 1px solid var(--line); }
+.test-btns button { font-size: 14px; color: var(--accent); }
 .about { text-align: center; color: var(--faint); font-size: 12px; margin: 16px 0 0; }
 
 .toast {
